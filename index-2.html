@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Smart Calculator</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+body { font-family:'Poppins',sans-serif; background:#0a0a0f; min-height:100vh; color:#fff; overflow-x:hidden; }
+
+/* TAB BAR */
+.tabbar { position:fixed; bottom:0; left:0; right:0; z-index:100; background:rgba(15,15,25,0.97); border-top:1px solid rgba(255,255,255,0.08); display:flex; padding:8px 0 16px; backdrop-filter:blur(20px); }
+.tab { flex:1; display:flex; flex-direction:column; align-items:center; gap:4px; cursor:pointer; padding:6px 2px; border-radius:12px; transition:all 0.2s; }
+.tab-icon { font-size:20px; }
+.tab-label { font-size:9px; font-weight:700; letter-spacing:0.3px; color:#555; transition:all 0.2s; }
+.tab-dot { width:4px; height:4px; border-radius:50%; background:transparent; transition:all 0.2s; margin-top:2px; }
+#tab-chicken.active { background:rgba(255,120,0,0.1); } #tab-chicken.active .tab-label { color:#ffb347; } #tab-chicken.active .tab-dot { background:#ffb347; }
+#tab-petrol.active  { background:rgba(0,220,100,0.1); } #tab-petrol.active  .tab-label { color:#44ffaa; } #tab-petrol.active  .tab-dot { background:#44ffaa; }
+#tab-trip.active    { background:rgba(100,80,255,0.1); } #tab-trip.active    .tab-label { color:#aa88ff; } #tab-trip.active    .tab-dot { background:#aa88ff; }
+#tab-split.active   { background:rgba(255,60,120,0.1); } #tab-split.active   .tab-label { color:#ff6eb4; } #tab-split.active   .tab-dot { background:#ff6eb4; }
+
+/* PAGES */
+.page { display:none; padding:20px 16px 110px; min-height:100vh; }
+.page.active { display:block; }
+.page-header { text-align:center; padding:28px 0 18px; }
+.page-header .big-icon { font-size:50px; margin-bottom:8px; }
+.page-header h1 { font-size:22px; font-weight:800; letter-spacing:1px; }
+.page-header p { font-size:11px; opacity:0.45; margin-top:4px; letter-spacing:0.5px; }
+.inr-badge { display:inline-flex; align-items:center; gap:6px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); border-radius:20px; padding:5px 14px; font-size:11px; font-weight:600; color:rgba(255,255,255,0.4); margin-bottom:14px; }
+
+/* CARDS */
+.card { border-radius:20px; padding:18px; margin-bottom:12px; }
+.card-label { font-size:9px; font-weight:700; letter-spacing:2px; text-transform:uppercase; margin-bottom:12px; opacity:0.7; }
+.input-row { display:flex; align-items:center; gap:8px; }
+.prefix { font-size:20px; font-weight:700; opacity:0.8; min-width:22px; }
+input[type=number],input[type=text],select { flex:1; background:rgba(255,255,255,0.07); border:1.5px solid rgba(255,255,255,0.12); border-radius:12px; padding:11px 14px; color:#fff; font-size:20px; font-family:'Roboto Mono',monospace; outline:none; width:100%; -webkit-appearance:none; }
+input::placeholder { color:rgba(255,255,255,0.2); font-size:14px; font-family:'Poppins',sans-serif; }
+select option { background:#1a1a2e; color:#fff; }
+.suffix { font-size:12px; opacity:0.45; min-width:28px; text-align:right; }
+.result-box { border-radius:14px; padding:13px 16px; display:flex; justify-content:space-between; align-items:center; margin-top:12px; }
+.result-label { font-size:12px; opacity:0.55; }
+.result-value { font-size:24px; font-weight:800; font-family:'Roboto Mono',monospace; }
+.result-sub { font-size:11px; opacity:0.45; margin-top:3px; text-align:right; }
+.preset-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-top:4px; }
+.preset-btn { border-radius:12px; padding:10px 4px; text-align:center; cursor:pointer; transition:all 0.15s; border:1.5px solid transparent; }
+.preset-btn:active { transform:scale(0.94); }
+.preset-g { font-size:12px; font-weight:700; }
+.preset-p { font-size:10px; margin-top:3px; opacity:0.55; }
+.divider { text-align:center; font-size:10px; opacity:0.25; letter-spacing:2px; margin:2px 0 12px; }
+.hint { font-size:11px; opacity:0.38; margin-top:7px; padding-left:2px; }
+
+/* CHICKEN */
+#page-chicken { background:linear-gradient(160deg,#100500 0%,#2a0d00 50%,#100500 100%); }
+#page-chicken .card { background:rgba(255,120,0,0.1); border:1.5px solid rgba(255,120,0,0.25); }
+#page-chicken .card-label { color:#ffaa44; }
+#page-chicken .prefix { color:#ff8c00; }
+#page-chicken .result-box { background:rgba(255,120,0,0.18); }
+#page-chicken .result-value { color:#ffb347; }
+#page-chicken .page-header h1 { color:#ffb347; }
+#page-chicken .preset-btn { background:rgba(255,120,0,0.12); }
+#page-chicken .preset-btn.sel { background:rgba(255,120,0,0.3); border-color:#ff8c00; }
+#page-chicken .preset-g { color:#ffb347; }
+#page-chicken input { border-color:rgba(255,120,0,0.22); }
+#page-chicken input:focus { border-color:#ff8c00; }
+
+/* PETROL */
+#page-petrol { background:linear-gradient(160deg,#001510 0%,#002d1a 50%,#001510 100%); }
+#page-petrol .card { background:rgba(0,220,100,0.08); border:1.5px solid rgba(0,220,100,0.2); }
+#page-petrol .card-label { color:#44ffaa; }
+#page-petrol .prefix { color:#00e676; }
+#page-petrol .result-box { background:rgba(0,220,100,0.15); }
+#page-petrol .result-value { color:#44ffaa; }
+#page-petrol .page-header h1 { color:#44ffaa; }
+#page-petrol .preset-btn { background:rgba(0,220,100,0.1); }
+#page-petrol .preset-btn.sel { background:rgba(0,220,100,0.25); border-color:#00e676; }
+#page-petrol .preset-g { color:#44ffaa; }
+#page-petrol input,#page-petrol select { border-color:rgba(0,220,100,0.18); }
+#page-petrol input:focus { border-color:#00e676; }
+
+/* TRIP */
+#page-trip { background:linear-gradient(160deg,#050015 0%,#0d0030 50%,#050015 100%); }
+#page-trip .card { background:rgba(100,80,255,0.1); border:1.5px solid rgba(100,80,255,0.25); }
+#page-trip .card-label { color:#aa88ff; }
+#page-trip .prefix { color:#7c5cff; }
+#page-trip .result-box { background:rgba(100,80,255,0.18); }
+#page-trip .result-value { color:#aa88ff; }
+#page-trip .page-header h1 { color:#aa88ff; }
+#page-trip input,#page-trip select { border-color:rgba(100,80,255,0.22); }
+#page-trip input:focus { border-color:#7c5cff; }
+.trip-summary { background:rgba(100,80,255,0.1); border:1.5px solid rgba(100,80,255,0.28); border-radius:20px; padding:18px; margin-bottom:12px; }
+.trip-row { display:flex; justify-content:space-between; align-items:center; padding:9px 0; border-bottom:1px solid rgba(255,255,255,0.05); }
+.trip-row:last-child { border-bottom:none; }
+.trip-row-label { font-size:13px; opacity:0.55; }
+.trip-row-value { font-size:15px; font-weight:700; font-family:'Roboto Mono',monospace; color:#aa88ff; }
+.big-result { background:linear-gradient(135deg,rgba(100,80,255,0.22),rgba(100,80,255,0.08)); border:2px solid rgba(100,80,255,0.38); border-radius:20px; padding:22px; text-align:center; margin-bottom:12px; }
+.big-result-label { font-size:11px; opacity:0.45; letter-spacing:2px; text-transform:uppercase; }
+.big-result-value { font-size:40px; font-weight:800; color:#aa88ff; font-family:'Roboto Mono',monospace; margin:6px 0; }
+.big-result-sub { font-size:12px; opacity:0.45; }
+
+/* SPLIT PAGE */
+#page-split { background:linear-gradient(160deg,#0a0015 0%,#180028 50%,#0a0015 100%); }
+#page-split .card { background:rgba(255,60,120,0.07); border:1.5px solid rgba(255,60,120,0.18); }
+#page-split .card-label { color:#ff6eb4; }
+#page-split .page-header h1 { color:#ff6eb4; }
+#page-split input,#page-split select { border-color:rgba(255,60,120,0.18); }
+#page-split input:focus { border-color:#ff3c78; }
+
+.mode-tabs { display:flex; gap:8px; margin-bottom:14px; }
+.mode-tab { flex:1; padding:10px 4px; text-align:center; border-radius:12px; font-size:10px; font-weight:700; cursor:pointer; border:1.5px solid rgba(255,60,120,0.15); background:rgba(255,60,120,0.05); color:#666; transition:all 0.2s; letter-spacing:0.5px; }
+.mode-tab.active { background:rgba(255,60,120,0.18); border-color:rgba(255,60,120,0.45); color:#ff6eb4; }
+
+.person-row { display:flex; align-items:center; gap:8px; margin-bottom:9px; animation:fadeIn 0.2s ease; }
+@keyframes fadeIn { from{opacity:0;transform:translateY(-6px)} to{opacity:1;transform:translateY(0)} }
+.p-avatar { width:34px; height:34px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:15px; flex-shrink:0; font-weight:700; }
+.p-name { flex:1; background:rgba(255,255,255,0.07); border:1.5px solid rgba(255,60,120,0.18); border-radius:10px; padding:8px 11px; color:#fff; font-size:14px; font-family:'Poppins',sans-serif; outline:none; min-width:0; }
+.p-name::placeholder { color:rgba(255,255,255,0.2); }
+.p-amt { width:88px; background:rgba(255,255,255,0.07); border:1.5px solid rgba(255,60,120,0.18); border-radius:10px; padding:8px 10px; color:#fff; font-size:14px; font-family:'Roboto Mono',monospace; outline:none; text-align:right; flex-shrink:0; }
+.p-amt::placeholder { color:rgba(255,255,255,0.18); font-size:12px; }
+.rm-btn { width:28px; height:28px; border-radius:50%; background:rgba(255,60,120,0.14); border:none; color:#ff6eb4; font-size:18px; cursor:pointer; flex-shrink:0; display:flex; align-items:center; justify-content:center; line-height:1; transition:all 0.15s; }
+.rm-btn:active { transform:scale(0.9); background:rgba(255,60,120,0.3); }
+
+.add-btn { width:100%; padding:12px; border-radius:12px; background:rgba(255,60,120,0.06); border:1.5px dashed rgba(255,60,120,0.22); color:#ff6eb4; font-size:13px; font-weight:600; cursor:pointer; font-family:'Poppins',sans-serif; margin-top:2px; transition:all 0.2s; }
+.add-btn:active { background:rgba(255,60,120,0.15); }
+
+.paidby-grid { display:flex; flex-wrap:wrap; gap:7px; }
+.pb-btn { padding:7px 13px; border-radius:20px; font-size:12px; font-weight:600; cursor:pointer; border:1.5px solid rgba(255,60,120,0.18); background:rgba(255,60,120,0.05); color:#666; transition:all 0.2s; }
+
+.calc-btn { width:100%; padding:15px; border-radius:16px; background:linear-gradient(135deg,#ff3c78,#c0185a); border:none; color:#fff; font-size:15px; font-weight:800; cursor:pointer; font-family:'Poppins',sans-serif; letter-spacing:1px; margin-bottom:14px; transition:all 0.2s; box-shadow:0 4px 20px rgba(255,60,120,0.3); }
+.calc-btn:active { transform:scale(0.98); }
+
+/* Results */
+.split-hero { background:linear-gradient(135deg,rgba(255,60,120,0.2),rgba(255,60,120,0.07)); border:2px solid rgba(255,60,120,0.38); border-radius:20px; padding:22px; text-align:center; margin-bottom:12px; }
+.split-hero-label { font-size:10px; opacity:0.45; letter-spacing:2px; text-transform:uppercase; }
+.split-hero-total { font-size:40px; font-weight:800; color:#ff6eb4; font-family:'Roboto Mono',monospace; margin:6px 0 2px; }
+.split-hero-sub { font-size:12px; opacity:0.5; }
+
+.person-result-row { display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px solid rgba(255,255,255,0.05); }
+.person-result-row:last-child { border-bottom:none; }
+.pr-left { display:flex; align-items:center; gap:9px; }
+.pr-name { font-size:14px; font-weight:600; }
+.pr-status { font-size:10px; margin-top:2px; opacity:0.65; }
+.pr-bar-wrap { width:70px; height:3px; background:rgba(255,255,255,0.07); border-radius:2px; margin-top:4px; overflow:hidden; }
+.pr-bar { height:100%; border-radius:2px; transition:width 0.4s; }
+.pr-amount { font-size:17px; font-weight:800; font-family:'Roboto Mono',monospace; text-align:right; }
+.pr-pct { font-size:10px; opacity:0.45; margin-top:2px; text-align:right; }
+.owes-color { color:#ff6eb4; }
+.paid-color { color:#44ffaa; }
+.equal-color { color:#ffb347; }
+
+.settle-row { display:flex; align-items:center; gap:6px; padding:10px 0; border-bottom:1px solid rgba(255,255,255,0.05); font-size:13px; }
+.settle-row:last-child { border-bottom:none; }
+.s-from { font-weight:700; }
+.s-arrow { opacity:0.35; font-size:11px; }
+.s-to { font-weight:700; }
+.s-amt { margin-left:auto; font-family:'Roboto Mono',monospace; font-weight:800; font-size:15px; color:#fff; }
+
+/* Pct warning */
+.pct-warning { font-size:11px; color:#ffb347; margin-top:6px; padding-left:2px; min-height:16px; }
+
+/* Toggle switch */
+.toggle-wrap { display:flex; justify-content:space-between; align-items:center; }
+.toggle-label-group { flex:1; }
+.toggle-switch { position:relative; display:inline-block; width:46px; height:25px; cursor:pointer; flex-shrink:0; }
+.toggle-switch input { opacity:0; width:0; height:0; }
+.toggle-bg { position:absolute; inset:0; background:rgba(255,255,255,0.1); border-radius:13px; transition:0.3s; border:1.5px solid rgba(100,80,255,0.28); }
+.toggle-dot { position:absolute; left:3px; top:3px; width:17px; height:17px; background:#555; border-radius:50%; transition:0.3s; }
+</style>
+</head>
+<body>
+
+<!-- ====== CHICKEN ====== -->
+<div id="page-chicken" class="page active">
+  <div class="page-header"><div class="big-icon">🍗</div><h1>CHICKEN RATE</h1><p>SET RATE · CALCULATE GRAMS & COST</p></div>
+  <div class="inr-badge">₹ Indian Rupee (INR)</div>
+  <div class="card">
+    <div class="card-label">📌 Today's Chicken Rate (per kg)</div>
+    <div class="input-row"><span class="prefix">₹</span><input type="number" id="c-rate" placeholder="e.g. 230" oninput="calcChicken()"><span class="suffix">/ kg</span></div>
+    <div class="hint" id="c-hint"></div>
+  </div>
+  <div class="card">
+    <div class="card-label">💰 I have this money → how many grams?</div>
+    <div class="input-row"><span class="prefix">₹</span><input type="number" id="c-money" placeholder="e.g. 150" oninput="calcChicken()"></div>
+    <div class="result-box"><div class="result-label">You will get</div><div style="text-align:right"><div class="result-value" id="c-grams-result">— g</div><div class="result-sub" id="c-grams-kg"></div></div></div>
+  </div>
+  <div class="divider">— OR —</div>
+  <div class="card">
+    <div class="card-label">⚖️ I want these grams → how much to pay?</div>
+    <div class="input-row"><input type="number" id="c-grams" placeholder="e.g. 500" oninput="calcChicken()"><span class="suffix">grams</span></div>
+    <div class="result-box"><div class="result-label">You will pay</div><div class="result-value" id="c-cost-result">—</div></div>
+  </div>
+  <div class="card" id="c-presets" style="display:none"><div class="card-label">⚡ Quick Reference</div><div class="preset-grid" id="c-preset-grid"></div></div>
+</div>
+
+<!-- ====== PETROL ====== -->
+<div id="page-petrol" class="page">
+  <div class="page-header"><div class="big-icon">⛽</div><h1>PETROL / DIESEL</h1><p>CALCULATE LITRES & FUEL COST</p></div>
+  <div class="inr-badge">₹ Indian Rupee (INR)</div>
+  <div class="card">
+    <div class="card-label">⛽ Fuel Type & Rate</div>
+    <div class="input-row" style="margin-bottom:11px"><select id="p-type" onchange="calcPetrol()" style="font-size:15px;font-family:'Poppins',sans-serif;"><option value="petrol">🟢 Petrol</option><option value="diesel">🟡 Diesel</option><option value="cng">🔵 CNG (per kg)</option></select></div>
+    <div class="input-row"><span class="prefix">₹</span><input type="number" id="p-rate" placeholder="e.g. 102" oninput="calcPetrol()"><span class="suffix" id="p-unit-label">/ L</span></div>
+    <div class="hint" id="p-hint"></div>
+  </div>
+  <div class="card">
+    <div class="card-label">💰 I have this money → how many litres?</div>
+    <div class="input-row"><span class="prefix">₹</span><input type="number" id="p-money" placeholder="e.g. 500" oninput="calcPetrol()"></div>
+    <div class="result-box"><div class="result-label">You will get</div><div class="result-value" id="p-litres-result">— L</div></div>
+  </div>
+  <div class="divider">— OR —</div>
+  <div class="card">
+    <div class="card-label">🧪 I want these litres → how much to pay?</div>
+    <div class="input-row"><input type="number" id="p-litres" placeholder="e.g. 10" oninput="calcPetrol()"><span class="suffix" id="p-litre-label">litres</span></div>
+    <div class="result-box"><div class="result-label">You will pay</div><div class="result-value" id="p-cost-result">—</div></div>
+  </div>
+  <div class="card" id="p-presets" style="display:none"><div class="card-label">⚡ Quick Reference</div><div class="preset-grid" id="p-preset-grid"></div></div>
+</div>
+
+<!-- ====== TRIP ====== -->
+<div id="page-trip" class="page">
+  <div class="page-header"><div class="big-icon">🚗</div><h1>TRIP FUEL COST</h1><p>ENTER ROUTE · GET TOTAL COST</p></div>
+  <div class="inr-badge">₹ Indian Rupee (INR)</div>
+  <div class="card">
+    <div class="card-label">📍 Route Details</div>
+    <div style="margin-bottom:9px"><input type="text" id="t-from" placeholder="From: Bangalore" style="font-size:15px;font-family:'Poppins',sans-serif;" oninput="calcTrip()"></div>
+    <div style="margin-bottom:13px"><input type="text" id="t-to" placeholder="To: Mysore" style="font-size:15px;font-family:'Poppins',sans-serif;" oninput="calcTrip()"></div>
+    <div class="card-label">📏 Total Distance (km)</div>
+    <div class="input-row"><input type="number" id="t-distance" placeholder="e.g. 140" oninput="calcTrip()"><span class="suffix">km</span></div>
+  </div>
+  <div class="card">
+    <div class="card-label">🚘 Your Car's Mileage</div>
+    <div class="input-row"><input type="number" id="t-mileage" placeholder="e.g. 15" oninput="calcTrip()"><span class="suffix">km/L</span></div>
+    <div class="hint">Average km your car gives per litre</div>
+  </div>
+  <div class="card">
+    <div class="card-label">⛽ Current Fuel Rate</div>
+    <div class="input-row" style="margin-bottom:9px"><select id="t-fueltype" onchange="calcTrip()" style="font-size:14px;font-family:'Poppins',sans-serif;"><option>🟢 Petrol</option><option>🟡 Diesel</option><option>🔵 CNG</option></select></div>
+    <div class="input-row"><span class="prefix">₹</span><input type="number" id="t-fuelrate" placeholder="e.g. 102" oninput="calcTrip()"><span class="suffix">/ L</span></div>
+  </div>
+  <div class="card">
+    <div class="toggle-wrap">
+      <div class="toggle-label-group"><div class="card-label" style="margin:0">🔄 Include Return Trip?</div><div class="hint" style="margin:0">Double the distance</div></div>
+      <label class="toggle-switch"><input type="checkbox" id="t-return" onchange="calcTrip()"><span class="toggle-bg" id="t-tog-bg"></span><span class="toggle-dot" id="t-tog-dot"></span></label>
+    </div>
+  </div>
+  <div class="big-result" id="t-result" style="display:none">
+    <div class="big-result-label">TOTAL FUEL COST</div>
+    <div class="big-result-value" id="t-total-cost">—</div>
+    <div class="big-result-sub" id="t-route-label"></div>
+  </div>
+  <div class="trip-summary" id="t-summary" style="display:none">
+    <div class="trip-row"><span class="trip-row-label">📍 Route</span><span class="trip-row-value" id="t-s-route">—</span></div>
+    <div class="trip-row"><span class="trip-row-label">📏 Distance</span><span class="trip-row-value" id="t-s-dist">—</span></div>
+    <div class="trip-row"><span class="trip-row-label">⛽ Fuel Needed</span><span class="trip-row-value" id="t-s-fuel">—</span></div>
+    <div class="trip-row"><span class="trip-row-label">💰 Rate per Litre</span><span class="trip-row-value" id="t-s-rate">—</span></div>
+    <div class="trip-row"><span class="trip-row-label">🚘 Car Mileage</span><span class="trip-row-value" id="t-s-mileage">—</span></div>
+  </div>
+</div>
+
+<!-- ====== SPLIT ====== -->
+<div id="page-split" class="page">
+  <div class="page-header"><div class="big-icon">🤝</div><h1>BILL SPLITTER</h1><p>SPLIT EQUALLY · BY % · TRACK WHO OWES WHOM</p></div>
+
+  <!-- Split mode -->
+  <div class="mode-tabs">
+    <div class="mode-tab active" id="mode-equal" onclick="setMode('equal')">⚖️ EQUAL</div>
+    <div class="mode-tab" id="mode-percent" onclick="setMode('percent')">% PERCENT</div>
+    <div class="mode-tab" id="mode-custom" onclick="setMode('custom')">✏️ CUSTOM</div>
+  </div>
+
+  <!-- Total Bill -->
+  <div class="card">
+    <div class="card-label">💳 Total Bill Amount</div>
+    <div class="input-row"><span class="prefix" style="color:#ff3c78">₹</span><input type="number" id="s-total" placeholder="e.g. 1200" oninput="onTotalChange()"></div>
+    <div style="margin-top:12px">
+      <div class="card-label" style="margin-bottom:8px">🏷️ What's this bill for? (optional)</div>
+      <input type="text" id="s-desc" placeholder="e.g. Dinner, Movie, Trip..." style="font-size:14px;font-family:'Poppins',sans-serif;">
+    </div>
+  </div>
+
+  <!-- People list -->
+  <div class="card">
+    <div class="card-label" id="s-people-label">👥 People (tap name to edit)</div>
+    <div id="s-people-list"></div>
+    <button class="add-btn" onclick="addPerson()">＋ Add Person</button>
+  </div>
+
+  <!-- Who paid -->
+  <div class="card">
+    <div class="card-label">💰 Who Paid the Bill?</div>
+    <div class="paidby-grid" id="s-paidby-grid"></div>
+  </div>
+
+  <!-- Calculate button -->
+  <button class="calc-btn" onclick="calcSplit()">⚡ CALCULATE SPLIT</button>
+
+  <!-- Results section -->
+  <div id="s-results" style="display:none">
+    <div class="split-hero">
+      <div class="split-hero-label">TOTAL BILL</div>
+      <div class="split-hero-total" id="sr-total">—</div>
+      <div class="split-hero-sub" id="sr-per">—</div>
+    </div>
+
+    <div class="card" style="padding:16px 17px">
+      <div class="card-label" style="margin-bottom:10px">👤 EACH PERSON'S SHARE</div>
+      <div id="sr-persons"></div>
+    </div>
+
+    <div class="card" style="padding:16px 17px" id="sr-settle-wrap">
+      <div class="card-label" style="margin-bottom:10px">💸 SETTLEMENT — WHO PAYS WHOM</div>
+      <div id="sr-settlements"></div>
+    </div>
+  </div>
+</div>
+
+<!-- TAB BAR -->
+<div class="tabbar">
+  <div class="tab active" id="tab-chicken" onclick="showPage('chicken')"><div class="tab-icon">🍗</div><div class="tab-label">CHICKEN</div><div class="tab-dot"></div></div>
+  <div class="tab" id="tab-petrol" onclick="showPage('petrol')"><div class="tab-icon">⛽</div><div class="tab-label">PETROL</div><div class="tab-dot"></div></div>
+  <div class="tab" id="tab-trip" onclick="showPage('trip')"><div class="tab-icon">🚗</div><div class="tab-label">TRIP</div><div class="tab-dot"></div></div>
+  <div class="tab" id="tab-split" onclick="showPage('split')"><div class="tab-icon">🤝</div><div class="tab-label">SPLIT</div><div class="tab-dot"></div></div>
+</div>
+
+<script>
+const SYM = '₹';
+const COLORS = ['#ff6eb4','#44ffaa','#ffb347','#7eb8ff','#c084fc','#fb923c','#34d399','#f472b6','#a78bfa','#60a5fa','#fbbf24','#4ade80','#e879f9','#38bdf8','#f87171'];
+const EMOJIS = ['🧑','👦','👧','👨','👩','🧔','🙋','👴','👵','🧑‍🦱','🧑‍🦰','🧑‍🦳','🧑‍🦲','🙎','🙍'];
+
+// ── NAVIGATION ──
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  document.getElementById('tab-' + name).classList.add('active');
+}
+
+function fmt(n, dec=2) {
+  if (n == null || isNaN(n) || !isFinite(n)) return '—';
+  return parseFloat(n.toFixed(dec)).toLocaleString('en-IN');
+}
+
+// ── CHICKEN ──
+function calcChicken() {
+  const rate = parseFloat(document.getElementById('c-rate').value);
+  const money = parseFloat(document.getElementById('c-money').value);
+  const grams = parseFloat(document.getElementById('c-grams').value);
+  document.getElementById('c-hint').textContent = rate > 0 ? SYM + ' ' + (rate/1000).toFixed(3) + ' per gram' : '';
+  if (money > 0 && rate > 0) {
+    const g = (money/rate)*1000;
+    document.getElementById('c-grams-result').textContent = fmt(g,1) + ' g';
+    document.getElementById('c-grams-kg').textContent = g >= 1000 ? '= ' + fmt(g/1000,2) + ' kg' : '';
+  } else { document.getElementById('c-grams-result').textContent = '— g'; document.getElementById('c-grams-kg').textContent = ''; }
+  document.getElementById('c-cost-result').textContent = (grams > 0 && rate > 0) ? SYM + ' ' + fmt((grams/1000)*rate) : '—';
+  const box = document.getElementById('c-presets'), grid = document.getElementById('c-preset-grid');
+  if (rate > 0) {
+    box.style.display = 'block'; grid.innerHTML = '';
+    [250,500,750,1000].forEach(g => {
+      const btn = document.createElement('div');
+      btn.className = 'preset-btn' + (parseFloat(document.getElementById('c-grams').value)==g?' sel':'');
+      btn.innerHTML = '<div class="preset-g">'+(g>=1000?'1 kg':g+'g')+'</div><div class="preset-p">'+SYM+fmt((g/1000)*rate,1)+'</div>';
+      btn.onclick = () => { document.getElementById('c-grams').value = g; calcChicken(); };
+      grid.appendChild(btn);
+    });
+  } else { box.style.display = 'none'; }
+}
+
+// ── PETROL ──
+function calcPetrol() {
+  const rate = parseFloat(document.getElementById('p-rate').value);
+  const money = parseFloat(document.getElementById('p-money').value);
+  const litres = parseFloat(document.getElementById('p-litres').value);
+  const isCng = document.getElementById('p-type').value === 'cng';
+  const unit = isCng ? 'kg' : 'L';
+  document.getElementById('p-unit-label').textContent = '/ ' + unit;
+  document.getElementById('p-litre-label').textContent = isCng ? 'kg' : 'litres';
+  document.getElementById('p-hint').textContent = rate > 0 ? SYM + ' ' + fmt(rate,2) + ' per ' + unit : '';
+  document.getElementById('p-litres-result').textContent = (money>0&&rate>0) ? fmt(money/rate,2)+' '+unit : '— '+unit;
+  document.getElementById('p-cost-result').textContent = (litres>0&&rate>0) ? SYM+' '+fmt(litres*rate,2) : '—';
+  const box = document.getElementById('p-presets'), grid = document.getElementById('p-preset-grid');
+  if (rate > 0) {
+    box.style.display = 'block'; grid.innerHTML = '';
+    [5,10,15,20].forEach(l => {
+      const btn = document.createElement('div');
+      btn.className = 'preset-btn' + (parseFloat(document.getElementById('p-litres').value)==l?' sel':'');
+      btn.innerHTML = '<div class="preset-g">'+l+' '+unit+'</div><div class="preset-p">'+SYM+fmt(l*rate,1)+'</div>';
+      btn.onclick = () => { document.getElementById('p-litres').value = l; calcPetrol(); };
+      grid.appendChild(btn);
+    });
+  } else { box.style.display = 'none'; }
+}
+
+// ── TRIP ──
+function calcTrip() {
+  const from = document.getElementById('t-from').value.trim()||'Start';
+  const to = document.getElementById('t-to').value.trim()||'End';
+  const dist = parseFloat(document.getElementById('t-distance').value);
+  const mileage = parseFloat(document.getElementById('t-mileage').value);
+  const fuelRate = parseFloat(document.getElementById('t-fuelrate').value);
+  const isReturn = document.getElementById('t-return').checked;
+  const bg = document.getElementById('t-tog-bg'), dot = document.getElementById('t-tog-dot');
+  if (isReturn) { bg.style.background='rgba(100,80,255,0.5)'; bg.style.borderColor='#7c5cff'; dot.style.background='#aa88ff'; dot.style.transform='translateX(21px)'; }
+  else { bg.style.background='rgba(255,255,255,0.1)'; bg.style.borderColor='rgba(100,80,255,0.28)'; dot.style.background='#555'; dot.style.transform='translateX(0)'; }
+  if (dist>0&&mileage>0&&fuelRate>0) {
+    const td=isReturn?dist*2:dist, fn=td/mileage, tc=fn*fuelRate;
+    document.getElementById('t-result').style.display='block';
+    document.getElementById('t-summary').style.display='block';
+    document.getElementById('t-total-cost').textContent=SYM+' '+fmt(tc,2);
+    document.getElementById('t-route-label').textContent=from+' → '+to+(isReturn?' → '+from:'');
+    document.getElementById('t-s-route').textContent=from+' ➜ '+to;
+    document.getElementById('t-s-dist').textContent=fmt(td,1)+' km'+(isReturn?' (return)':'');
+    document.getElementById('t-s-fuel').textContent=fmt(fn,2)+' litres';
+    document.getElementById('t-s-rate').textContent=SYM+' '+fmt(fuelRate,2)+' / L';
+    document.getElementById('t-s-mileage').textContent=fmt(mileage,1)+' km/L';
+  } else { document.getElementById('t-result').style.display='none'; document.getElementById('t-summary').style.display='none'; }
+}
+
+// ── SPLIT ──
+let splitMode = 'equal';
+let paidByIdx = 0;
+let people = [
+  { name: 'You', val: '' },
+  { name: 'Friend 1', val: '' },
+  { name: 'Friend 2', val: '' }
+];
+
+function setMode(m) {
+  splitMode = m;
+  document.querySelectorAll('.mode-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('mode-'+m).classList.add('active');
+  renderPeople();
+}
+
+function addPerson() {
+  people.push({ name: 'Person ' + (people.length+1), val: '' });
+  renderPeople();
+}
+
+function removePerson(i) {
+  if (people.length <= 2) return;
+  people.splice(i, 1);
+  if (paidByIdx >= people.length) paidByIdx = 0;
+  renderPeople();
+}
+
+function renderPeople() {
+  const list = document.getElementById('s-people-list');
+  list.innerHTML = '';
+  const showAmt = splitMode !== 'equal';
+  const placeholder = splitMode === 'percent' ? '% e.g. 30' : '₹ amount';
+  document.getElementById('s-people-label').textContent = '👥 People (' + people.length + ')';
+
+  people.forEach((p, i) => {
+    const row = document.createElement('div');
+    row.className = 'person-row';
+    const color = COLORS[i % COLORS.length];
+    const emoji = EMOJIS[i % EMOJIS.length];
+    row.innerHTML =
+      '<div class="p-avatar" style="background:'+color+'20;color:'+color+'">'+emoji+'</div>' +
+      '<input class="p-name" value="'+p.name+'" placeholder="Name" oninput="people['+i+'].name=this.value;renderPaidBy()">' +
+      (showAmt ? '<input class="p-amt" value="'+p.val+'" placeholder="'+placeholder+'" type="number" min="0" oninput="people['+i+'].val=this.value">' : '') +
+      (people.length > 2 ? '<button class="rm-btn" onclick="removePerson('+i+')">×</button>' : '');
+    list.appendChild(row);
+  });
+  renderPaidBy();
+}
+
+function renderPaidBy() {
+  const grid = document.getElementById('s-paidby-grid');
+  grid.innerHTML = '';
+  people.forEach((p, i) => {
+    const color = COLORS[i % COLORS.length];
+    const emoji = EMOJIS[i % EMOJIS.length];
+    const isActive = paidByIdx === i;
+    const btn = document.createElement('div');
+    btn.className = 'pb-btn';
+    btn.style.cssText = isActive
+      ? 'border-color:'+color+';background:'+color+'22;color:'+color+';font-weight:800;'
+      : '';
+    btn.innerHTML = emoji + ' ' + (p.name || 'Person '+(i+1));
+    btn.onclick = () => { paidByIdx = i; renderPaidBy(); };
+    grid.appendChild(btn);
+  });
+}
+
+function onTotalChange() {
+  // Auto-calc for equal mode
+  if (splitMode === 'equal') calcSplit();
+}
+
+function calcSplit() {
+  const total = parseFloat(document.getElementById('s-total').value);
+  if (!total || total <= 0) { document.getElementById('s-results').style.display = 'none'; return; }
+  const n = people.length;
+  let shares = [];
+
+  if (splitMode === 'equal') {
+    shares = people.map(() => total / n);
+  } else if (splitMode === 'custom') {
+    shares = people.map(p => parseFloat(p.val) || 0);
+    const customSum = shares.reduce((a,b)=>a+b,0);
+    if (customSum <= 0) { alert('Please enter amounts for each person'); return; }
+  } else { // percent
+    const pcts = people.map(p => parseFloat(p.val) || 0);
+    const pctSum = pcts.reduce((a,b)=>a+b,0);
+    if (pctSum <= 0) { alert('Please enter % for each person'); return; }
+    if (Math.abs(pctSum - 100) > 0.5) {
+      // Scale them proportionally instead of blocking
+    }
+    shares = pcts.map(pct => (pct / pctSum) * total);
+  }
+
+  // Show results
+  document.getElementById('s-results').style.display = 'block';
+  const desc = document.getElementById('s-desc').value.trim();
+  document.getElementById('sr-total').textContent = SYM + ' ' + fmt(total, 2);
+  document.getElementById('sr-per').textContent = (desc ? '"'+desc+'" · ' : '') +
+    (splitMode==='equal' ? SYM+' '+fmt(total/n,2)+' each ('+n+' people)' : 'Custom split · '+n+' people');
+
+  // Per-person breakdown
+  const personsDiv = document.getElementById('sr-persons');
+  personsDiv.innerHTML = '';
+  const payerName = people[paidByIdx].name || 'Person '+(paidByIdx+1);
+
+  people.forEach((p, i) => {
+    const share = shares[i];
+    const isPayer = i === paidByIdx;
+    const pct = total > 0 ? (share/total*100) : 0;
+    const color = COLORS[i % COLORS.length];
+    const emoji = EMOJIS[i % EMOJIS.length];
+    const row = document.createElement('div');
+    row.className = 'person-result-row';
+    const amtClass = isPayer ? 'paid-color' : 'owes-color';
+    const statusText = isPayer ? '✅ Paid the full bill' : 'Owes ' + payerName;
+    row.innerHTML =
+      '<div class="pr-left">' +
+        '<div class="p-avatar" style="width:32px;height:32px;font-size:13px;flex-shrink:0;background:'+color+'20;color:'+color+'">'+emoji+'</div>' +
+        '<div><div class="pr-name" style="color:'+color+'">'+(p.name||'P'+(i+1))+'</div>' +
+        '<div class="pr-status">'+statusText+'</div>' +
+        '<div class="pr-bar-wrap"><div class="pr-bar" style="width:'+Math.min(pct,100)+'%;background:'+color+'"></div></div>' +
+        '</div>' +
+      '</div>' +
+      '<div><div class="pr-amount '+amtClass+'">'+SYM+' '+fmt(share,2)+'</div>' +
+      '<div class="pr-pct">'+fmt(pct,1)+'%</div></div>';
+    personsDiv.appendChild(row);
+  });
+
+  // Settlement: simplified — who owes the payer
+  const settleDiv = document.getElementById('sr-settlements');
+  settleDiv.innerHTML = '';
+  const settleWrap = document.getElementById('sr-settle-wrap');
+  let hasAny = false;
+
+  // Build balance map: positive = gets back, negative = owes
+  const balances = shares.map((s, i) => i === paidByIdx ? total - s : -s);
+
+  // For simple single-payer case: everyone owes the payer their share
+  const debtors = people
+    .map((p, i) => ({ idx: i, name: p.name || 'P'+(i+1), owes: shares[i] }))
+    .filter(d => d.idx !== paidByIdx);
+
+  if (debtors.length > 0) {
+    hasAny = true;
+    const payerColor = COLORS[paidByIdx % COLORS.length];
+    debtors.forEach(d => {
+      const dColor = COLORS[d.idx % COLORS.length];
+      const row = document.createElement('div');
+      row.className = 'settle-row';
+      row.innerHTML =
+        '<span class="s-from" style="color:'+dColor+'">'+EMOJIS[d.idx%EMOJIS.length]+' '+d.name+'</span>' +
+        '<span class="s-arrow">── pays ──▶</span>' +
+        '<span class="s-to" style="color:'+payerColor+'">'+EMOJIS[paidByIdx%EMOJIS.length]+' '+payerName+'</span>' +
+        '<span class="s-amt">'+SYM+' '+fmt(d.owes,2)+'</span>';
+      settleDiv.appendChild(row);
+    });
+  }
+  settleWrap.style.display = hasAny ? 'block' : 'none';
+}
+
+// Init
+renderPeople();
+</script>
+</body>
+</html>
